@@ -59,7 +59,10 @@ class Receiver:
                     elif line.startswith('### NOCARRIER '):
                         in_packet = False
                         if self.compress:
-                            packet = zlib.decompress(base64.b64decode(packet))
+                            try:
+                                packet = zlib.decompress(base64.b64decode(packet))
+                            except:
+                                pass
                         if len(packet) > 10:
                             print 'Got packet: %s' % packet
                             self.packets.append(packet)
@@ -76,7 +79,7 @@ class Receiver:
 
 
 if __name__ == "__main__":
-    use_compression = False
+    use_compression = True
     baud = '3000'
     receiver = Receiver(compress=use_compression, baudmode=baud)
 

@@ -6,7 +6,7 @@ import threading
 import time
 import select
 import zlib, base64
-
+from  crypt.reedsolo import RSCodec
 
 class Transmitter:
     def __init__(self, compress=True, **kwargs):
@@ -17,10 +17,14 @@ class Transmitter:
 
     def write(self, text):
         s = len(text)
-        print text
+
         if self.compress:
             text = base64.b64encode(zlib.compress(text))
             print "Size before %d size after %d" % (s, len(text))
+
+        rs = RSCodec(10)
+        text = rs.encode(text)
+
         self.p.stdin.write(text)
 
     def close(self):
@@ -54,18 +58,29 @@ class Receiver:
                     if not line:
                         break
                     if line.startswith('### CARRIER '):
+                        start = time.time()
                         in_packet = True
                         packet = ''
                     elif line.startswith('### NOCARRIER '):
                         in_packet = False
+                        if len(packet) < 30:
+                            continue
+                        b = bytearray()
+                        b.extend(packet)
+
+                        rs = RSCodec(10)
+                        packet = rs.decode(b)
+
                         if self.compress:
                             try:
                                 packet = zlib.decompress(base64.b64decode(packet))
                             except:
                                 pass
-                        if len(packet) > 10:
-                            print 'Got packet: %s' % packet
-                            self.packets.append(packet)
+
+                        print 'Got packet: %s' % packet
+                        self.packets.append(packet)
+                        end = time.time()
+                        print "It took %s" % (end - start)
 
     def __init__(self, compress=True, **kwargs):
         self.p = subprocess.Popen(['bin/minimodem', '-r', '-8', '-A',
